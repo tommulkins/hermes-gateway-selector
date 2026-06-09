@@ -75,7 +75,7 @@ For connecting over the internet, see [Security](#security) below.
 | `hermes-gateway list` | List configured gateways |
 | `hermes-gateway add NAME URL` | Add a gateway |
 | `hermes-gateway remove NAME` | Remove a gateway |
-| `hermes-gateway run NAME` | Open a TUI session directly on a named gateway |
+| `hermes-gateway run NAME [args]` | Open a TUI session directly on a named gateway, with optional hermes args |
 | `hermes-gateway install` | Write shell function and add source line to rc file |
 | `hermes-gateway uninstall` | Remove source line from rc file and delete function file |
 
@@ -108,6 +108,23 @@ rm ~/.hermes/gateways.json
 - The selector only appears for bare `hermes` (zero arguments). Any arguments at all pass straight to the real `hermes` binary — `hermes update`, `hermes setup`, `hermes --tui` all work as expected.
 - Remote gateways always launch with `--tui` since they're headless connections.
 - Gateway tokens and hostnames are stored locally in `~/.hermes/gateways.json` — never committed or shared.
+
+### `hermes-gateway run` Examples
+
+```bash
+# Open TUI on a named gateway
+hermes-gateway run Hugh
+
+# Continue the last session on a remote gateway
+hermes-gateway run Hugh --continue
+
+# Resume a specific session
+hermes-gateway run Hugh --resume SESSION_ID
+
+# Note: do not use -- as a separator — hermes argparse doesn't support it
+# hermes-gateway run Hugh -- --continue  ← WRONG
+# hermes-gateway run Hugh --continue     ← CORRECT
+```
 
 ## Security
 
