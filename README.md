@@ -28,6 +28,33 @@ source ~/.zshrc  # or ~/.bashrc
 hermes
 ```
 
+## Setting Up a Remote Gateway
+
+If you have Hermes Agent running on another machine (home server, work laptop, VPS), you can connect to it from your local terminal.
+
+**On the remote machine** — tell the Hermes agent:
+
+> I'd like to connect to you remotely from another machine. Can you set up the gateway and give me the WebSocket URL?
+
+The agent will configure the gateway and return a URL like:
+
+```
+ws://192.168.1.100:9119/api/ws?token=your-api-token-here
+```
+
+**On your local machine** — add it:
+
+```bash
+hermes-gateway add "Home Server" "ws://192.168.1.100:9119/api/ws?token=your-api-token-here"
+```
+
+Now `hermes` will show the selector with both Local and the remote gateway.
+
+**Requirements on the remote machine:**
+- Hermes Agent gateway must be running (`hermes gateway run` or installed as a service)
+- The machine must be reachable on the gateway's port (default `9119`) from your local network
+- The API token authenticates the connection — treat it like a password
+
 ## Commands
 
 | Command | Description |
