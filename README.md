@@ -63,6 +63,8 @@ Now `hermes` will show the selector with both Local and the remote gateway.
 - The machine must be reachable on the gateway's port (default `9119`) from your local network
 - The API token authenticates the connection — treat it like a password
 
+For connecting over the internet, see [Security](#security) below.
+
 ## Commands
 
 | Command | Description |
@@ -103,6 +105,21 @@ rm ~/.hermes/gateways.json
 - The selector only appears for bare `hermes` (zero arguments). Any arguments at all pass straight to the real `hermes` binary — `hermes update`, `hermes setup`, `hermes --tui` all work as expected.
 - Remote gateways always launch with `--tui` since they're headless connections.
 - Gateway tokens and hostnames are stored locally in `~/.hermes/gateways.json` — never committed or shared.
+
+## Security
+
+**Local network (home/office WiFi, LAN):** Works out of the box. The token is the only authentication — anyone on the same network with the URL has full agent access. This is fine for most home setups.
+
+**Over the internet:** Works, but requires care:
+
+- **Use `wss://` (TLS) not `ws://`** — plain `ws://` sends the token and all traffic in cleartext. Put a TLS-terminating reverse proxy (nginx, Caddy) in front of the gateway, or use a tunnel.
+- **Use a VPN or tunnel instead of port forwarding** — exposing port 9119 directly to the internet is risky. Safer options:
+  - [Tailscale](https://tailscale.com/) — zero-config WireGuard mesh, no ports exposed
+  - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) — public URL with TLS, no port forwarding
+  - [ngrok](https://ngrok.com/) — quick one-off tunnels for testing
+- **The token is stored in plain text** in `~/.hermes/gateways.json`. Anyone with file access on your machine can read it.
+- **Rotate tokens periodically** — if you suspect a token is compromised, ask the remote agent to regenerate it.
+- **Don't paste the full URL (with token) into public channels** — it's equivalent to sharing a password.
 
 ## Shell Compatibility
 
