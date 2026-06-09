@@ -18,6 +18,7 @@ Shell function + CLI tool for choosing between local and remote Hermes Agent gat
 
 - Running `hermes` (no args) → interactive selector menu
 - Running `hermes update`, `hermes setup`, etc. → passes through to the real binary
+- `hermes-gateway run NAME` → open TUI directly on a named gateway
 - No gateways configured? Runs `hermes` directly — no selector
 - Gateways are stored in `~/.hermes/gateways.json`
 - Works with **zsh** and **bash**
@@ -64,17 +65,26 @@ hermes
 #
 #   Select gateway [1]:
 
-# All other commands pass through untouched
+# Open TUI directly on a named gateway (skip the selector)
+hermes-gateway run "Agent Name"
+
+# All other hermes commands pass through untouched
 hermes update
 hermes setup
 hermes --tui
 ```
 
+## Notes
+
+- The selector only appears for bare `hermes` (zero arguments). Any arguments at all pass straight to the real `hermes` binary.
+- `hermes-gateway run NAME` connects directly to a named gateway via `--tui`, no selector needed.
+- Remote gateways always launch with `--tui` since they're headless connections.
+- Gateway tokens and hostnames are stored locally in `~/.hermes/gateways.json` — never committed or shared.
+
 ## Uninstall
 
 ```bash
 hermes-gateway uninstall
-# Removes the source line from .zshrc/.bashrc and deletes ~/.hermes/hermes-gateway.sh
 rm ~/.local/bin/hermes-gateway
 rm ~/.hermes/gateways.json
 ```
@@ -83,12 +93,6 @@ rm ~/.hermes/gateways.json
 
 - `jq` (preferred) or `python3` (fallback) for JSON parsing
 - `bash` (the script itself) — the shell wrapper works in both zsh and bash
-
-## Notes
-
-- The selector only appears for bare `hermes` (zero arguments). Any arguments at all pass straight to the real `hermes` binary.
-- Remote gateways always launch with `--tui` since they're headless connections.
-- Gateway tokens and hostnames are stored locally in `~/.hermes/gateways.json` — never committed or shared.
 
 ## Shell Compatibility
 

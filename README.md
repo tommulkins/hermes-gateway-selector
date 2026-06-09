@@ -75,6 +75,7 @@ For connecting over the internet, see [Security](#security) below.
 | `hermes-gateway list` | List configured gateways |
 | `hermes-gateway add NAME URL` | Add a gateway |
 | `hermes-gateway remove NAME` | Remove a gateway |
+| `hermes-gateway run NAME` | Open a TUI session directly on a named gateway |
 | `hermes-gateway install` | Write shell function and add source line to rc file |
 | `hermes-gateway uninstall` | Remove source line from rc file and delete function file |
 

@@ -5,7 +5,8 @@
 #   hermes-gateway              — interactive selector (used by shell function)
 #   hermes-gateway list         — list configured gateways
 #   hermes-gateway add NAME URL — add a gateway
-#   hermes-gateway remove NAME  — remove a gateway
+#   hermes-gateway remove NAME
+#   hermes-gateway run NAME -- <args>  — remove a gateway
 #   hermes-gateway install      — write shell function to your rc file
 #   hermes-gateway uninstall    — remove shell function from your rc file
 
@@ -110,6 +111,26 @@ with open('$CONFIG_FILE', 'w') as f:
 "
   fi
   echo "Removed gateway '$name'"
+}
+
+run_gateway() {
+  local name="$1"
+  shift
+  ensure_config
+  local url
+  url=$(list_gateways | while IFS=$'\t' read -r gw_name gw_url; do
+    if [[ "$gw_name" == "$name" ]]; then
+      echo "$gw_url"
+      break
+    fi
+  done)
+
+  if [[ -z "$url" ]]; then
+    echo "Gateway '$name' not found. Use 'hermes-gateway list' to see available gateways." >&2
+    exit 1
+  fi
+
+  exec env HERMES_TUI_GATEWAY_URL="$url" command hermes --tui "$@"
 }
 
 # --- Selector ---
@@ -250,10 +271,17 @@ case "${1:-}" in
     ;;
   remove)
     if [[ $# -lt 2 ]]; then
-      echo "Usage: hermes-gateway remove <name>" >&2
+      echo "Usage: hermes-gateway remove <name>" &>2
       exit 1
     fi
     remove_gateway "$2"
+    ;;
+  run)
+    if [[ $# -lt 2 ]]; then
+      echo "Usage: hermes-gateway run <name>" >&2
+      exit 1
+    fi
+    run_gateway "$2"
     ;;
   install)
     install_function
@@ -266,7 +294,7 @@ case "${1:-}" in
     ;;
   *)
     echo "Unknown command: $1" >&2
-    echo "Usage: hermes-gateway [list|add|remove|install|uninstall]" >&2
+    echo "Usage: hermes-gateway [list|add|remove|run|install|uninstall]" >&2
     exit 1
     ;;
 esac
