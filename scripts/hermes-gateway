@@ -169,16 +169,11 @@ detect_rc_file() {
 install_function() {
   local rc_file
   rc_file=$(detect_rc_file)
+  local func_file="$CONFIG_DIR/hermes-gateway.sh"
 
-  # Remove old version if present
-  if [[ -f "$rc_file" ]] && grep -q "$MARKER" "$rc_file"; then
-    sed -i.bak "/$MARKER/,/$MARKER_END/d" "$rc_file"
-    rm -f "${rc_file}.bak"
-  fi
-
-  cat >> "$rc_file" << 'FUNCTION'
-
-# >>> hermes-gateway-selector >>>
+  # Write the function to a standalone file
+  cat > "$func_file" << 'FUNCTION'
+# hermes-gateway-selector — shell wrapper
 hermes() {
   if [[ $# -gt 0 ]]; then
     command hermes "$@"
@@ -190,23 +185,45 @@ hermes() {
     command hermes
   fi
 }
-# <<< hermes-gateway-selector <<<
 FUNCTION
 
-  echo "Installed shell function to $rc_file"
+  # Remove old source line if present
+  if [[ -f "$rc_file" ]] && grep -q "$MARKER" "$rc_file"; then
+    sed -i.bak "/$MARKER/,/$MARKER_END/d" "$rc_file"
+    rm -f "${rc_file}.bak"
+  fi
+
+  # Add single source line to rc file
+  cat >> "$rc_file" << EOF
+
+# >>> hermes-gateway-selector >>>
+[[ -f "$func_file" ]] && source "$func_file"
+# <<< hermes-gateway-selector <<<
+EOF
+
+  echo "Installed function to $func_file"
+  echo "Added source line to $rc_file"
   echo "Restart your shell or run: source $rc_file"
 }
 
 uninstall_function() {
   local rc_file
   rc_file=$(detect_rc_file)
+  local func_file="$CONFIG_DIR/hermes-gateway.sh"
 
+  # Remove source line from rc file
   if [[ -f "$rc_file" ]] && grep -q "$MARKER" "$rc_file"; then
     sed -i.bak "/$MARKER/,/$MARKER_END/d" "$rc_file"
     rm -f "${rc_file}.bak"
-    echo "Removed shell function from $rc_file"
+    echo "Removed source line from $rc_file"
   else
-    echo "No hermes-gateway function found in $rc_file"
+    echo "No hermes-gateway entry found in $rc_file"
+  fi
+
+  # Delete the function file
+  if [[ -f "$func_file" ]]; then
+    rm -f "$func_file"
+    echo "Deleted $func_file"
   fi
 }
 
