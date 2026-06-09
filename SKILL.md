@@ -36,7 +36,9 @@ chmod +x ~/.local/bin/hermes-gateway
 hermes-gateway install
 ```
 
-This writes a wrapper function to your shell rc file (`.zshrc` or `.bashrc` automatically detected). Restart your shell or `source` the rc file.
+This writes a wrapper function to your shell rc file — `.zshrc` or `.bashrc`, auto-detected based on `$SHELL`. Uses marker comments (`# >>> hermes-gateway-selector >>>` / `# <<< hermes-gateway-selector <<<`) so `uninstall` cleanly removes only this function.
+
+Restart your shell or `source` the rc file.
 
 ### 3. Add gateways
 
@@ -67,6 +69,24 @@ hermes setup
 hermes --tui
 ```
 
+## Dependencies
+
+- `jq` (preferred) or `python3` (fallback) for JSON parsing
+- `bash` (the script itself) — the shell wrapper works in both zsh and bash
+
+## Notes
+
+- The selector only appears for bare `hermes` (zero arguments). Any arguments at all pass straight to the real `hermes` binary.
+- Remote gateways always launch with `--tui` since they're headless connections.
+- Gateway tokens and hostnames are stored locally in `~/.hermes/gateways.json` — never committed or shared.
+
+## Shell Compatibility
+
+The interactive `read` prompt uses `echo -n` + plain `read` for portability. This avoids two common pitfalls:
+
+- `read -p "prompt" var` — **bash-only**, fails in zsh with "no coprocess"
+- `read "var?prompt"` — **zsh-only**, fails in bash with "not a valid identifier"
+
 ## Uninstall
 
 ```bash
@@ -74,14 +94,3 @@ hermes-gateway uninstall
 rm ~/.local/bin/hermes-gateway
 rm ~/.hermes/gateways.json
 ```
-
-## Dependencies
-
-- `jq` (preferred) or `python3` (fallback) for JSON parsing
-- `bash` (the script itself) — works inside both zsh and bash shells
-
-## Notes
-
-- The selector only appears for bare `hermes` (zero arguments). Any arguments at all pass straight to the real `hermes` binary.
-- Remote gateways always launch with `--tui` since they're headless connections.
-- Gateway tokens and hostnames are stored locally in `~/.hermes/gateways.json` — never committed or shared.
