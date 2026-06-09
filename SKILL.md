@@ -18,6 +18,7 @@ Shell function + CLI tool for choosing between local and remote Hermes Agent gat
 
 - Running `hermes` (no args) → interactive selector menu
 - Running `hermes update`, `hermes setup`, etc. → passes through to the real binary
+- No gateways configured? Runs `hermes` directly — no selector
 - Gateways are stored in `~/.hermes/gateways.json`
 - Works with **zsh** and **bash**
 
@@ -36,7 +37,7 @@ chmod +x ~/.local/bin/hermes-gateway
 hermes-gateway install
 ```
 
-This writes a wrapper function to your shell rc file — `.zshrc` or `.bashrc`, auto-detected based on `$SHELL`. Uses marker comments (`# >>> hermes-gateway-selector >>>` / `# <<< hermes-gateway-selector <<<`) so `uninstall` cleanly removes only this function.
+This writes the wrapper function to `~/.hermes/hermes-gateway.sh` and adds a single `source` line to your shell rc file — `.zshrc` or `.bashrc`, auto-detected based on `$SHELL`. Uses marker comments (`# >>> hermes-gateway-selector >>>` / `# <<< hermes-gateway-selector <<<`) so `uninstall` cleanly removes only the source line.
 
 Restart your shell or `source` the rc file.
 
@@ -56,7 +57,7 @@ hermes-gateway remove "Agent Name"
 ## Usage
 
 ```bash
-# Interactive selector (bare hermes)
+# Interactive selector (bare hermes, at least one gateway configured)
 hermes
 #   1) Local
 #   2) Agent Name
@@ -67,6 +68,15 @@ hermes
 hermes update
 hermes setup
 hermes --tui
+```
+
+## Uninstall
+
+```bash
+hermes-gateway uninstall
+# Removes the source line from .zshrc/.bashrc and deletes ~/.hermes/hermes-gateway.sh
+rm ~/.local/bin/hermes-gateway
+rm ~/.hermes/gateways.json
 ```
 
 ## Dependencies
@@ -86,11 +96,3 @@ The interactive `read` prompt uses `echo -n` + plain `read` for portability. Thi
 
 - `read -p "prompt" var` — **bash-only**, fails in zsh with "no coprocess"
 - `read "var?prompt"` — **zsh-only**, fails in bash with "not a valid identifier"
-
-## Uninstall
-
-```bash
-hermes-gateway uninstall
-rm ~/.local/bin/hermes-gateway
-rm ~/.hermes/gateways.json
-```

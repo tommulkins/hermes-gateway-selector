@@ -6,6 +6,7 @@ Shell function + CLI tool for choosing between local and remote [Hermes Agent](h
 
 - Running `hermes` (no args) → interactive selector
 - Running `hermes update`, `hermes setup`, etc. → passes through to the real binary
+- No gateways configured? Runs `hermes` directly — no selector
 - Works with **zsh** and **bash**
 
 ## Quick Start
@@ -15,7 +16,7 @@ Shell function + CLI tool for choosing between local and remote [Hermes Agent](h
 curl -fsSL https://raw.githubusercontent.com/tommulkins/hermes-gateway-selector/main/scripts/hermes-gateway -o ~/.local/bin/hermes-gateway
 chmod +x ~/.local/bin/hermes-gateway
 
-# 2. Install the shell wrapper function (writes to .zshrc or .bashrc, auto-detected)
+# 2. Install the shell wrapper (adds a source line to .zshrc or .bashrc, auto-detected)
 hermes-gateway install
 
 # 3. Add your remote gateways
@@ -35,17 +36,27 @@ hermes
 | `hermes-gateway list` | List configured gateways |
 | `hermes-gateway add NAME URL` | Add a gateway |
 | `hermes-gateway remove NAME` | Remove a gateway |
-| `hermes-gateway install` | Write shell function to your rc file |
-| `hermes-gateway uninstall` | Remove shell function from your rc file |
+| `hermes-gateway install` | Write shell function and add source line to rc file |
+| `hermes-gateway uninstall` | Remove source line from rc file and delete function file |
 
 ## How It Works
 
-1. `hermes-gateway install` appends a shell function to your `.zshrc` or `.bashrc` (auto-detected based on `$SHELL`)
+1. `hermes-gateway install` writes the wrapper function to `~/.hermes/hermes-gateway.sh` and adds a single `source` line to your `.zshrc` or `.bashrc` (auto-detected based on `$SHELL`)
 2. The function wraps the `hermes` binary — zero args triggers the selector, any args pass through untouched
-3. Remote gateways launch via `HERMES_TUI_GATEWAY_URL` env var with `--tui`
-4. Gateway definitions live in `~/.hermes/gateways.json`
+3. When no gateways are configured, `hermes` launches directly with no selector prompt
+4. Remote gateways launch via `HERMES_TUI_GATEWAY_URL` env var with `--tui`
+5. Gateway definitions live in `~/.hermes/gateways.json`
 
-The `install` command uses marker comments (`# >>> hermes-gateway-selector >>>` / `# <<< hermes-gateway-selector <<<`) in your rc file so `uninstall` cleanly removes only the wrapper function without touching the rest of your config.
+The `install` command uses marker comments (`# >>> hermes-gateway-selector >>>` / `# <<< hermes-gateway-selector <<<`) in your rc file so `uninstall` cleanly removes only the source line without touching the rest of your config.
+
+## Uninstall
+
+```bash
+hermes-gateway uninstall
+# Removes the source line from .zshrc/.bashrc and deletes ~/.hermes/hermes-gateway.sh
+rm ~/.local/bin/hermes-gateway
+rm ~/.hermes/gateways.json
+```
 
 ## Dependencies
 
@@ -66,14 +77,6 @@ The interactive `read` prompt uses `echo -n` + plain `read` for portability. Thi
 - `read "var?prompt"` — **zsh-only**, fails in bash with "not a valid identifier"
 
 The `echo -n` + `read` approach works identically in both shells.
-
-## Uninstall
-
-```bash
-hermes-gateway uninstall
-rm ~/.local/bin/hermes-gateway
-rm ~/.hermes/gateways.json
-```
 
 ## License
 
