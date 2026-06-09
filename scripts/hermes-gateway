@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 # hermes-gateway — manage and select from multiple Hermes Agent gateways
 # Config: ~/.hermes/gateways.json
 # Usage:
@@ -122,7 +122,7 @@ select_gateway() {
   done <<< "$gateways"
 
   echo ""
-  read -r "choice?Select gateway [1]: "
+  echo -n "Select gateway [1]: "; read -r choice
   choice="${choice:-1}"
 
   if [[ "$choice" == "1" ]]; then
