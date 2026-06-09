@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # hermes-gateway — manage and select from multiple Hermes Agent gateways
 # Config: ~/.hermes/gateways.json
 # Usage:
