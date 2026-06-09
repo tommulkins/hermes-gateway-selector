@@ -50,6 +50,8 @@ The agent will configure the gateway and return a URL like:
 ws://192.168.1.100:9119/api/ws?token=your-api-token-here
 ```
 
+> **Not on your local network, or need encryption?** Use `wss://` instead of `ws://` for TLS-encrypted connections. See [Security](#security) for details on setting up TLS and tunnels.
+
 **On your local machine** — add it:
 
 ```bash
