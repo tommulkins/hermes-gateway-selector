@@ -77,10 +77,7 @@ hermes --tui
 ## Notes
 
 - The selector only appears for bare `hermes` (zero arguments). Any arguments at all pass straight to the real `hermes` binary.
-- `hermes-gateway run NAME [args]` connects directly to a named gateway via `--tui`, no selector needed. Pass hermes args directly (no `--` separator):
-  - `hermes-gateway run Hugh` — open TUI
-  - `hermes-gateway run Hugh --continue` — continue last session
-  - `hermes-gateway run Hugh --resume SESSION_ID` — resume specific session
+- `hermes-gateway run NAME` connects directly to a named gateway via `--tui`, no selector needed. Note: `--continue` and `--resume` don't work with remote gateways — they resolve sessions from your local database, not the remote machine's.
 - Remote gateways always launch with `--tui` since they're headless connections.
 - Gateway tokens and hostnames are stored locally in `~/.hermes/gateways.json` — never committed or shared.
 

@@ -114,17 +114,9 @@ rm ~/.hermes/gateways.json
 ```bash
 # Open TUI on a named gateway
 hermes-gateway run Hugh
-
-# Continue the last session on a remote gateway
-hermes-gateway run Hugh --continue
-
-# Resume a specific session
-hermes-gateway run Hugh --resume SESSION_ID
-
-# Note: do not use -- as a separator — hermes argparse doesn't support it
-# hermes-gateway run Hugh -- --continue  ← WRONG
-# hermes-gateway run Hugh --continue     ← CORRECT
 ```
+
+> **Note:** `--continue` and `--resume` don't work with remote gateways — they resolve sessions from your local database, not the remote machine's. Just connect and the remote TUI will show its own conversation history.
 
 ## Security
 
