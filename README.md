@@ -2,14 +2,7 @@
 
 Shell function + CLI tool for choosing between local and remote [Hermes Agent](https://hermes-agent.nousresearch.com) gateways from your terminal.
 
-```
-$ hermes
-  1) Local
-  2) Work Laptop
-  3) Home Server
-
-  Select gateway [1]:
-```
+![hermes gateway selector demo](assets/demo.png)
 
 - Running `hermes` (no args) → interactive selector
 - Running `hermes update`, `hermes setup`, etc. → passes through to the real binary
