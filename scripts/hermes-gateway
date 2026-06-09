@@ -113,6 +113,12 @@ select_gateway() {
   local gateways
   gateways=$(list_gateways)
 
+  # No gateways configured — just launch hermes directly
+  if [[ -z "$gateways" ]]; then
+    exec command hermes
+    return
+  fi
+
   # Always offer local first
   echo "  1) Local"
   local i=2
