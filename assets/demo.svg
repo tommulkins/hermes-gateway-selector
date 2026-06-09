@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="320" viewBox="0 0 600 320">
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <g filter="url(#shadow)">
+    <rect width="540" height="260" x="30" y="20" rx="8" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+    
+    <circle cx="50" cy="40" r="6" fill="#ff5f56"/>
+    <circle cx="70" cy="40" r="6" fill="#ffbd2e"/>
+    <circle cx="90" cy="40" r="6" fill="#27c93f"/>
+    
+    <g font-family="SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace" font-size="14" fill="#c9d1d9">
+      <text x="56" y="90" font-weight="bold" fill="#58a6ff">$ <tspan fill="#c9d1d9">hermes</tspan></text>
+      
+      <text x="76" y="130"><tspan fill="#8b949e">1)</tspan> Local</text>
+      <text x="76" y="160"><tspan fill="#8b949e">2)</tspan> My Remote Hermes <tspan fill="#484f58">(192.168.1.10:9119)</tspan></text>
+      
+      <text x="56" y="210" font-weight="bold" fill="#2ea44f">Select gateway <tspan fill="#c9d1d9">[1]:</tspan></text>
+      
+      <rect x="202" y="197" width="8" height="15" fill="#58a6ff" opacity="0.8"/>
+    </g>
+  </g>
+</svg>
