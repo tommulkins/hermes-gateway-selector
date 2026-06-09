@@ -28,6 +28,14 @@ source ~/.zshrc  # or ~/.bashrc
 hermes
 ```
 
+## Install via Hermes Agent
+
+Already have Hermes running? Just ask your agent to install it for you:
+
+> Install the hermes-gateway-selector skill from https://github.com/tommulkins/hermes-gateway-selector
+
+The agent will clone the repo, copy the script to your PATH, run `hermes-gateway install`, and walk you through adding your first gateway.
+
 ## Setting Up a Remote Gateway
 
 If you have Hermes Agent running on another machine (home server, work laptop, VPS), you can connect to it from your local terminal.
