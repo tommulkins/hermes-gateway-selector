@@ -113,7 +113,7 @@ rm ~/.hermes/gateways.json
 
 ```bash
 # Open TUI on a named gateway
-hermes-gateway run Hugh
+hermes-gateway run NAME
 ```
 
 > **Note:** `--continue` and `--resume` don't work with remote gateways — they resolve sessions from your local database, not the remote machine's. Just connect and the remote TUI will show its own conversation history.
