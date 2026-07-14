@@ -167,11 +167,14 @@ print(f'username=\"{a[\"username\"]}\"')
 print(f'password_env=\"{a[\"password_env\"]}\"')
 ")"
 
-  # Resolve password from env var
+  # Resolve password from env var or ~/.hermes/.env
   local password
   password="${!password_env:-}"
+  if [[ -z "$password" && -f "$CONFIG_DIR/.env" ]]; then
+    password=$(grep "^${password_env}=" "$CONFIG_DIR/.env" 2>/dev/null | tail -1 | cut -d'=' -f2-)
+  fi
   if [[ -z "$password" ]]; then
-    echo -e "${RED}Error: env var $password_env is not set. Add it to ~/.hermes/.env${RESET}" >&2
+    echo -e "${RED}Error: $password_env not set. Add it to ~/.hermes/.env${RESET}" >&2
     return 1
   fi
 
