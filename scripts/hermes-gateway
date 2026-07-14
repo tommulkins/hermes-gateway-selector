@@ -6,7 +6,7 @@
 #   hermes-gateway list         — list configured gateways
 #   hermes-gateway add NAME URL — add a gateway
 #   hermes-gateway remove NAME
-#   hermes-gateway run NAME -- <args>  — remove a gateway
+#   hermes-gateway run NAME -- <args>  — connect to a gateway
 #   hermes-gateway install      — write shell function to your rc file
 #   hermes-gateway uninstall    — remove shell function from your rc file
 
@@ -21,6 +21,7 @@ MARKER_END="# <<< hermes-gateway-selector <<<"
 GREY="\033[90m"
 GREEN="\033[32m"
 BLUE="\033[34m"
+RED="\033[31m"
 RESET="\033[0m"
 
 # --- Helpers ---
@@ -113,22 +114,107 @@ with open('$CONFIG_FILE', 'w') as f:
   echo "Removed gateway '$name'"
 }
 
+# Resolve a gateway URL for connection. If the gateway has gated auth
+# (password-based), authenticate and mint a WS ticket. Returns the
+# final WS URL (with ?ticket= appended if needed).
+resolve_gateway_url() {
+  local name="$1"
+  ensure_config
+
+  # Extract the full gateway object as JSON
+  local gw_json
+  gw_json=$(python3 -c "
+import json
+with open('$CONFIG_FILE') as f:
+    data = json.load(f)
+for g in data:
+    if g['name'] == '$name':
+        print(json.dumps(g))
+        break
+")
+
+  if [[ -z "$gw_json" ]]; then
+    echo "Gateway '$name' not found." >&2
+    return 1
+  fi
+
+  local url
+  url=$(echo "$gw_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['url'])")
+
+  # Check if this gateway has password auth
+  local has_auth
+  has_auth=$(echo "$gw_json" | python3 -c "
+import json, sys
+g = json.load(sys.stdin)
+print('yes' if g.get('auth', {}).get('mode') == 'password' else 'no')
+")
+
+  if [[ "$has_auth" == "no" ]]; then
+    echo "$url"
+    return 0
+  fi
+
+  # Gated auth: login → get ticket → append to URL
+  local login_url ticket_url provider username password_env
+  eval "$(echo "$gw_json" | python3 -c "
+import json, sys
+g = json.load(sys.stdin)
+a = g['auth']
+print(f'login_url=\"{a[\"login_url\"]}\"')
+print(f'ticket_url=\"{a[\"ticket_url\"]}\"')
+print(f'provider=\"{a[\"provider\"]}\"')
+print(f'username=\"{a[\"username\"]}\"')
+print(f'password_env=\"{a[\"password_env\"]}\"')
+")"
+
+  # Resolve password from env var
+  local password
+  password="${!password_env:-}"
+  if [[ -z "$password" ]]; then
+    echo -e "${RED}Error: env var $password_env is not set. Add it to ~/.hermes/.env${RESET}" >&2
+    return 1
+  fi
+
+  # Login
+  local cookie_file
+  cookie_file=$(mktemp /tmp/hermes-gw-cookies.XXXXXX)
+  trap "rm -f '$cookie_file'" RETURN
+
+  local login_resp
+  login_resp=$(curl -s -c "$cookie_file" -X POST "$login_url" \
+    -H 'Content-Type: application/json' \
+    -d "{\"provider\":\"$provider\",\"username\":\"$username\",\"password\":\"$password\"}" 2>&1)
+
+  if ! echo "$login_resp" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if d.get('ok') else 1)" 2>/dev/null; then
+    echo -e "${RED}Login failed for '$name': $login_resp${RESET}" >&2
+    return 1
+  fi
+
+  # Get WS ticket
+  local ticket_resp ticket
+  ticket_resp=$(curl -s -b "$cookie_file" -X POST "$ticket_url" 2>&1)
+  ticket=$(echo "$ticket_resp" | python3 -c "import json,sys; print(json.load(sys.stdin).get('ticket',''))" 2>/dev/null)
+
+  if [[ -z "$ticket" ]]; then
+    echo -e "${RED}Failed to get WS ticket for '$name': $ticket_resp${RESET}" >&2
+    return 1
+  fi
+
+  # Append ticket to URL
+  local separator="?"
+  if [[ "$url" == *"?"* ]]; then
+    separator="&"
+  fi
+  echo "${url}${separator}ticket=${ticket}"
+}
+
 run_gateway() {
   local name="$1"
   shift
   ensure_config
-  local url
-  url=$(list_gateways | while IFS=$'\t' read -r gw_name gw_url; do
-    if [[ "$gw_name" == "$name" ]]; then
-      echo "$gw_url"
-      break
-    fi
-  done)
 
-  if [[ -z "$url" ]]; then
-    echo "Gateway '$name' not found. Use 'hermes-gateway list' to see available gateways." >&2
-    exit 1
-  fi
+  local url
+  url=$(resolve_gateway_url "$name") || exit 1
 
   exec env HERMES_TUI_GATEWAY_URL="$url" command hermes --tui "$@"
 }
@@ -165,22 +251,25 @@ select_gateway() {
     return
   fi
 
-  local selected_url=""
+  local selected_name=""
   local j=2
   while IFS=$'\t' read -r name url; do
     if [[ "$choice" == "$j" ]]; then
-      selected_url="$url"
+      selected_name="$name"
       break
     fi
     ((j++))
   done <<< "$gateways"
 
-  if [[ -z "$selected_url" ]]; then
+  if [[ -z "$selected_name" ]]; then
     echo "Invalid choice" >&2
     return 1
   fi
 
-  exec env HERMES_TUI_GATEWAY_URL="$selected_url" command hermes --tui
+  local resolved_url
+  resolved_url=$(resolve_gateway_url "$selected_name") || return 1
+
+  exec env HERMES_TUI_GATEWAY_URL="$resolved_url" command hermes --tui
 }
 
 # --- Install / Uninstall ---

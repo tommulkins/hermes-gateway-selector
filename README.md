@@ -67,6 +67,43 @@ Now `hermes` will show the selector with both Local and the remote gateway.
 
 For connecting over the internet, see [Security](#security) below.
 
+### Password-Authenticated Gateways (Gated Mode)
+
+When the remote dashboard binds to a non-loopback address (e.g. `--host 0.0.0.0`), Hermes requires authentication via a password provider — the legacy `?token=` query param no longer works (since the June 2026 security hardening). The selector supports this automatically.
+
+**On the remote machine** — set up a password provider:
+
+```bash
+hermes dashboard register   # interactive — choose username/password provider
+```
+
+**On your local machine** — add the password to `~/.hermes/.env`:
+
+```bash
+echo 'HUGH_DASHBOARD_PASSWORD=your-password-here' >> ~/.hermes/.env
+```
+
+Then edit `~/.hermes/gateways.json` directly to include the auth block:
+
+```json
+[
+  {
+    "name": "Hugh",
+    "url": "ws://192.168.1.216:9119/api/ws",
+    "auth": {
+      "mode": "password",
+      "login_url": "http://192.168.1.216:9119/auth/password-login",
+      "ticket_url": "http://192.168.1.216:9119/api/auth/ws-ticket",
+      "provider": "basic",
+      "username": "tom",
+      "password_env": "HUGH_DASHBOARD_PASSWORD"
+    }
+  }
+]
+```
+
+The selector logs in with the password, mints a single-use WS ticket (30s TTL), and connects — all in the background. The password never leaves your machine.
+
 ## Commands
 
 | Command | Description |
