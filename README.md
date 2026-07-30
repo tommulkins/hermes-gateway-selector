@@ -12,29 +12,37 @@ Shell function + CLI tool for choosing between local and remote [Hermes Agent](h
 ## Quick Start
 
 ```bash
-# 1. Download the script
-curl -fsSL https://raw.githubusercontent.com/tommulkins/hermes-gateway-selector/main/scripts/hermes-gateway -o ~/.local/bin/hermes-gateway
-chmod +x ~/.local/bin/hermes-gateway
+# Install from the Hermes Skills Hub (recommended)
+hermes skills tap add tommulkins/hermes-gateway-selector
+hermes skills install tommulkins/hermes-gateway-selector/hermes-gateway-selector
 
-# 2. Install the shell wrapper (adds a source line to .zshrc or .bashrc, auto-detected)
+# Or install manually:
+# curl -fsSL https://raw.githubusercontent.com/tommulkins/hermes-gateway-selector/main/skills/hermes-gateway-selector/scripts/hermes-gateway -o ~/.local/bin/hermes-gateway
+# chmod +x ~/.local/bin/hermes-gateway
+
+# Set up the shell wrapper (adds a source line to .zshrc or .bashrc, auto-detected)
 hermes-gateway install
 
-# 3. Add your remote gateways
+# Add your remote gateways
 hermes-gateway add "Work Laptop" "ws://192.168.1.100:9119/api/ws?token=YOUR_TOKEN"
 hermes-gateway add "Home Server" "ws://10.0.0.5:9119/api/ws?token=YOUR_TOKEN"
 
-# 4. Restart your shell, then just type `hermes`
+# Restart your shell, then just type `hermes`
 source ~/.zshrc  # or ~/.bashrc
 hermes
 ```
 
 ## Install via Hermes Agent
 
-Already have Hermes running? Just ask your agent to install it for you:
+Already have Hermes running? Just ask your agent:
+
+> Install the hermes-gateway-selector skill from the hub
+
+Or from the repo directly:
 
 > Install the hermes-gateway-selector skill from https://github.com/tommulkins/hermes-gateway-selector
 
-The agent will clone the repo, copy the script to your PATH, run `hermes-gateway install`, and walk you through adding your first gateway.
+The agent will copy the script to your PATH, run `hermes-gateway install`, and walk you through adding your first gateway.
 
 ## Setting Up a Remote Gateway
 
@@ -181,34 +189,52 @@ The `echo -n` + `read` approach works identically in both shells.
 
 ## Publishing to the Skills Hub
 
-To publish or update this skill on the Hermes Skills Hub:
+This skill is distributed as a **tap** — a GitHub repo that Hermes users add as a skill source.
 
-```bash
-# Publish from a clean copy (no .git/ directory — scanner flags binary blobs in .git/cursor/, .git/objects/, etc.)
-mkdir -p /tmp/hermes-gateway-selector-publish
-cp SKILL.md /tmp/hermes-gateway-selector-publish/
-cp -r scripts /tmp/hermes-gateway-selector-publish/
+### Repo structure
 
-hermes skills publish /tmp/hermes-gateway-selector-publish --to github --repo tommulkins/hermes-gateway-selector
+```
+hermes-gateway-selector/
+├── skills/
+│   └── hermes-gateway-selector/
+│       ├── SKILL.md              # skill instructions
+│       └── scripts/
+│           └── hermes-gateway    # the bash script
+├── README.md
+└── LICENSE
 ```
 
-This creates a PR on the repo. Merge it to register the skill in the hub.
+Taps discover skills by listing subdirectories under `skills/` and probing each for `SKILL.md`.
+
+### How users install
+
+```bash
+# Add the tap (one-time)
+hermes skills tap add tommulkins/hermes-gateway-selector
+
+# Install the skill
+hermes skills install tommulkins/hermes-gateway-selector/hermes-gateway-selector
+
+# Or install directly without adding the tap
+hermes skills install tommulkins/hermes-gateway-selector/skills/hermes-gateway-selector
+```
+
+### Publishing updates
+
+Push changes to `main`. Users get updates via `hermes skills update`.
 
 ### Scanner compliance notes
 
-The Hermes skill scanner (`hermes skills publish`) checks for security-sensitive patterns before allowing publish. To pass cleanly:
+The Hermes skill scanner checks for security-sensitive patterns before allowing install. To pass cleanly:
 
-- **No real credentials in examples** — use placeholders like `YOUR_PASSWORD`, `your-username`, `192.168.1.100`. The scanner flags environment variable names that look like real service credentials (e.g. `HUGH_DASHBOARD_PASSWORD`) as CRITICAL exfiltration.
-- **Exclude `.git/` from the publish directory** — the scanner walks everything in the path, including `.git/cursor/` (Cursor IDE artifacts) and `.git/objects/pack/` (binary blobs). Publish from a temp copy without `.git/`.
+- **No real credentials in examples** — use placeholders like `YOUR_PASSWORD`, `your-username`, `192.168.1.100`. The scanner flags environment variable names that look like real service credentials as CRITICAL exfiltration.
 - **Keep images under 1MB** — large assets are flagged as MEDIUM structural bloat.
-- **Shell rc modifications are expected** — the scanner flags `.zshrc`/`.bashrc` edits as MEDIUM persistence. This is inherent to the tool and won't block publish.
-- **Network references in docs are expected** — WebSocket URLs, tunnel tools (Tailscale, ngrok) are flagged at MEDIUM/HIGH. Won't block publish, just informational.
+- **Shell rc modifications are expected** — the scanner flags `.zshrc`/`.bashrc` edits as MEDIUM persistence. This is inherent to the tool and won't block install.
+- **Network references in docs are expected** — WebSocket URLs, tunnel tools (Tailscale, ngrok) are flagged at MEDIUM/HIGH. Informational only.
 
-Run a dry scan to check before publishing:
+### ClawHub (central registry)
 
-```bash
-hermes skills publish /path/to/skill  # scan runs automatically, stops before the --repo requirement
-```
+ClawHub (`hermes skills search`) is a separate central registry. Submit at https://clawhub.ai/submit — CLI publishing isn't automated yet.
 
 ## License
 
