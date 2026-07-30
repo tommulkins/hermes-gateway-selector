@@ -11,15 +11,31 @@ Shell function + CLI tool for choosing between local and remote [Hermes Agent](h
 
 ## Quick Start
 
+### Option 1: skills.sh (any agent)
+
 ```bash
-# Install from the Hermes Skills Hub (recommended)
+npx skills add tommulkins/hermes-gateway-selector
+```
+
+Works with Hermes Agent, Claude Code, Cursor, Codex, and 15+ other agents. See [skills.sh](https://skills.sh/tommulkins/hermes-gateway-selector/hermes-gateway-selector).
+
+### Option 2: Hermes tap
+
+```bash
 hermes skills tap add tommulkins/hermes-gateway-selector
 hermes skills install tommulkins/hermes-gateway-selector/hermes-gateway-selector
+```
 
-# Or install manually:
-# curl -fsSL https://raw.githubusercontent.com/tommulkins/hermes-gateway-selector/main/skills/hermes-gateway-selector/scripts/hermes-gateway -o ~/.local/bin/hermes-gateway
-# chmod +x ~/.local/bin/hermes-gateway
+### Option 3: manual install
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/tommulkins/hermes-gateway-selector/main/skills/hermes-gateway-selector/scripts/hermes-gateway -o ~/.local/bin/hermes-gateway
+chmod +x ~/.local/bin/hermes-gateway
+```
+
+### After installing (any method)
+
+```bash
 # Set up the shell wrapper (adds a source line to .zshrc or .bashrc, auto-detected)
 hermes-gateway install
 
@@ -36,7 +52,7 @@ hermes
 
 Already have Hermes running? Just ask your agent:
 
-> Install the hermes-gateway-selector skill from the hub
+> Install the hermes-gateway-selector skill from skills.sh
 
 Or from the repo directly:
 
@@ -232,9 +248,13 @@ The Hermes skill scanner checks for security-sensitive patterns before allowing 
 - **Shell rc modifications are expected** — the scanner flags `.zshrc`/`.bashrc` edits as MEDIUM persistence. This is inherent to the tool and won't block install.
 - **Network references in docs are expected** — WebSocket URLs, tunnel tools (Tailscale, ngrok) are flagged at MEDIUM/HIGH. Informational only.
 
-### ClawHub (central registry)
+### skills.sh (cross-agent directory)
 
-ClawHub (`hermes skills search`) is a separate central registry. Submit at https://clawhub.ai/submit — CLI publishing isn't automated yet.
+The skill is listed on [skills.sh](https://skills.sh/tommulkins/hermes-gateway-selector/hermes-gateway-selector) — the open agent skills directory. To refresh the listing after pushing changes:
+
+```bash
+cd /tmp && npx skills add tommulkins/hermes-gateway-selector --yes
+```
 
 ## License
 
