@@ -153,10 +153,20 @@ The `install` command uses marker comments (`# >>> hermes-gateway-selector >>>` 
 ## Uninstall
 
 ```bash
+# 1. Remove the shell wrapper (works for all install methods)
 hermes-gateway uninstall
-# Removes the source line from .zshrc/.bashrc and deletes ~/.hermes/hermes-gateway.sh
+
+# 2. Remove the script
 rm ~/.local/bin/hermes-gateway
+
+# 3. Remove gateway config
 rm ~/.hermes/gateways.json
+
+# 4. If installed via Hermes tap — remove the skill
+hermes skills uninstall hermes-gateway-selector
+
+# 5. If installed via skills.sh — remove with npx
+npx skills remove tommulkins/hermes-gateway-selector
 ```
 
 ## Dependencies
@@ -203,59 +213,10 @@ The interactive `read` prompt uses `echo -n` + plain `read` for portability. Thi
 
 The `echo -n` + `read` approach works identically in both shells.
 
-## Publishing to the Skills Hub
-
-This skill is distributed as a **tap** — a GitHub repo that Hermes users add as a skill source.
-
-### Repo structure
-
-```
-hermes-gateway-selector/
-├── skills/
-│   └── hermes-gateway-selector/
-│       ├── SKILL.md              # skill instructions
-│       └── scripts/
-│           └── hermes-gateway    # the bash script
-├── README.md
-└── LICENSE
-```
-
-Taps discover skills by listing subdirectories under `skills/` and probing each for `SKILL.md`.
-
-### How users install
-
-```bash
-# Add the tap (one-time)
-hermes skills tap add tommulkins/hermes-gateway-selector
-
-# Install the skill
-hermes skills install tommulkins/hermes-gateway-selector/hermes-gateway-selector
-
-# Or install directly without adding the tap
-hermes skills install tommulkins/hermes-gateway-selector/skills/hermes-gateway-selector
-```
-
-### Publishing updates
-
-Push changes to `main`. Users get updates via `hermes skills update`.
-
-### Scanner compliance notes
-
-The Hermes skill scanner checks for security-sensitive patterns before allowing install. To pass cleanly:
-
-- **No real credentials in examples** — use placeholders like `YOUR_PASSWORD`, `your-username`, `192.168.1.100`. The scanner flags environment variable names that look like real service credentials as CRITICAL exfiltration.
-- **Keep images under 1MB** — large assets are flagged as MEDIUM structural bloat.
-- **Shell rc modifications are expected** — the scanner flags `.zshrc`/`.bashrc` edits as MEDIUM persistence. This is inherent to the tool and won't block install.
-- **Network references in docs are expected** — WebSocket URLs, tunnel tools (Tailscale, ngrok) are flagged at MEDIUM/HIGH. Informational only.
-
-### skills.sh (cross-agent directory)
-
-The skill is listed on [skills.sh](https://skills.sh/tommulkins/hermes-gateway-selector/hermes-gateway-selector) — the open agent skills directory. To refresh the listing after pushing changes:
-
-```bash
-cd /tmp && npx skills add tommulkins/hermes-gateway-selector --yes
-```
-
 ## License
 
 MIT
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for repo structure, publishing workflow, and scanner compliance notes.
