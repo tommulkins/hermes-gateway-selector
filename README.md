@@ -80,7 +80,7 @@ hermes dashboard register   # interactive — choose username/password provider
 **On your local machine** — add the password to `~/.hermes/.env`:
 
 ```bash
-echo 'HUGH_DASHBOARD_PASSWORD=your-password-here' >> ~/.hermes/.env
+echo 'MY_GATEWAY_PASSWORD=your-password-here' >> ~/.hermes/.env
 ```
 
 Then edit `~/.hermes/gateways.json` directly to include the auth block:
@@ -88,15 +88,15 @@ Then edit `~/.hermes/gateways.json` directly to include the auth block:
 ```json
 [
   {
-    "name": "Hugh",
-    "url": "ws://192.168.1.216:9119/api/ws",
+    "name": "My Server",
+    "url": "ws://192.168.1.100:9119/api/ws",
     "auth": {
       "mode": "password",
-      "login_url": "http://192.168.1.216:9119/auth/password-login",
-      "ticket_url": "http://192.168.1.216:9119/api/auth/ws-ticket",
+      "login_url": "http://192.168.1.100:9119/auth/password-login",
+      "ticket_url": "http://192.168.1.100:9119/api/auth/ws-ticket",
       "provider": "basic",
-      "username": "tom",
-      "password_env": "HUGH_DASHBOARD_PASSWORD"
+      "username": "your-username",
+      "password_env": "MY_GATEWAY_PASSWORD"
     }
   }
 ]
@@ -178,6 +178,37 @@ The interactive `read` prompt uses `echo -n` + plain `read` for portability. Thi
 - `read "var?prompt"` — **zsh-only**, fails in bash with "not a valid identifier"
 
 The `echo -n` + `read` approach works identically in both shells.
+
+## Publishing to the Skills Hub
+
+To publish or update this skill on the Hermes Skills Hub:
+
+```bash
+# Publish from a clean copy (no .git/ directory — scanner flags binary blobs in .git/cursor/, .git/objects/, etc.)
+mkdir -p /tmp/hermes-gateway-selector-publish
+cp SKILL.md /tmp/hermes-gateway-selector-publish/
+cp -r scripts /tmp/hermes-gateway-selector-publish/
+
+hermes skills publish /tmp/hermes-gateway-selector-publish --to github --repo tommulkins/hermes-gateway-selector
+```
+
+This creates a PR on the repo. Merge it to register the skill in the hub.
+
+### Scanner compliance notes
+
+The Hermes skill scanner (`hermes skills publish`) checks for security-sensitive patterns before allowing publish. To pass cleanly:
+
+- **No real credentials in examples** — use placeholders like `YOUR_PASSWORD`, `your-username`, `192.168.1.100`. The scanner flags environment variable names that look like real service credentials (e.g. `HUGH_DASHBOARD_PASSWORD`) as CRITICAL exfiltration.
+- **Exclude `.git/` from the publish directory** — the scanner walks everything in the path, including `.git/cursor/` (Cursor IDE artifacts) and `.git/objects/pack/` (binary blobs). Publish from a temp copy without `.git/`.
+- **Keep images under 1MB** — large assets are flagged as MEDIUM structural bloat.
+- **Shell rc modifications are expected** — the scanner flags `.zshrc`/`.bashrc` edits as MEDIUM persistence. This is inherent to the tool and won't block publish.
+- **Network references in docs are expected** — WebSocket URLs, tunnel tools (Tailscale, ngrok) are flagged at MEDIUM/HIGH. Won't block publish, just informational.
+
+Run a dry scan to check before publishing:
+
+```bash
+hermes skills publish /path/to/skill  # scan runs automatically, stops before the --repo requirement
+```
 
 ## License
 
