@@ -1,0 +1,392 @@
+#!/usr/bin/env bash
+# hermes-gateway — manage and select from multiple Hermes Agent gateways
+# Config: ~/.hermes/gateways.json
+# Usage:
+#   hermes-gateway              — interactive selector (used by shell function)
+#   hermes-gateway list         — list configured gateways
+#   hermes-gateway add NAME URL — add a gateway
+#   hermes-gateway remove NAME
+#   hermes-gateway run NAME -- <args>  — connect to a gateway
+#   hermes-gateway install      — write shell function to your rc file
+#   hermes-gateway uninstall    — remove shell function from your rc file
+
+set -euo pipefail
+
+CONFIG_DIR="${HERMES_HOME:-$HOME/.hermes}"
+CONFIG_FILE="$CONFIG_DIR/gateways.json"
+MARKER="# >>> hermes-gateway-selector >>>"
+MARKER_END="# <<< hermes-gateway-selector <<<"
+
+# ANSI colors
+GREY="\033[90m"
+GREEN="\033[32m"
+BLUE="\033[34m"
+RED="\033[31m"
+RESET="\033[0m"
+
+# --- Helpers ---
+
+ensure_config() {
+  mkdir -p "$CONFIG_DIR"
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo '[]' > "$CONFIG_FILE"
+  fi
+}
+
+get_json_tool() {
+  if command -v jq &>/dev/null; then
+    echo "jq"
+  elif command -v python3 &>/dev/null; then
+    echo "python3"
+  else
+    echo "ERROR: jq or python3 is required" >&2
+    exit 1
+  fi
+}
+
+list_gateways() {
+  ensure_config
+  local tool
+  tool=$(get_json_tool)
+  if [[ "$tool" == "jq" ]]; then
+    jq -r '.[] | "\(.name)\t\(.url)"' "$CONFIG_FILE"
+  else
+    python3 -c "
+import json, sys
+with open('$CONFIG_FILE') as f:
+    for g in json.load(f):
+        print(f\"{g['name']}\t{g['url']}\")
+"
+  fi
+}
+
+add_gateway() {
+  local name="$1" url="$2"
+  ensure_config
+  local tool
+  tool=$(get_json_tool)
+
+  # Check for duplicate
+  if list_gateways | grep -q "^${name}$\|^${name}\t"; then
+    echo "Gateway '$name' already exists. Remove it first." >&2
+    exit 1
+  fi
+
+  if [[ "$tool" == "jq" ]]; then
+    local tmp
+    tmp=$(jq --arg n "$name" --arg u "$url" '. + [{"name": $n, "url": $u}]' "$CONFIG_FILE")
+    echo "$tmp" > "$CONFIG_FILE"
+  else
+    python3 -c "
+import json
+with open('$CONFIG_FILE') as f:
+    data = json.load(f)
+data.append({'name': '$name', 'url': '$url'})
+with open('$CONFIG_FILE', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+"
+  fi
+  echo "Added gateway '$name'"
+}
+
+remove_gateway() {
+  local name="$1"
+  ensure_config
+  local tool
+  tool=$(get_json_tool)
+
+  if [[ "$tool" == "jq" ]]; then
+    local tmp
+    tmp=$(jq --arg n "$name" '[.[] | select(.name != $n)]' "$CONFIG_FILE")
+    echo "$tmp" > "$CONFIG_FILE"
+  else
+    python3 -c "
+import json
+with open('$CONFIG_FILE') as f:
+    data = json.load(f)
+data = [g for g in data if g['name'] != '$name']
+with open('$CONFIG_FILE', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+"
+  fi
+  echo "Removed gateway '$name'"
+}
+
+# Resolve a gateway URL for connection. If the gateway has gated auth
+# (password-based), authenticate and mint a WS ticket. Returns the
+# final WS URL (with ?ticket= appended if needed).
+resolve_gateway_url() {
+  local name="$1"
+  ensure_config
+
+  # Extract the full gateway object as JSON
+  local gw_json
+  gw_json=$(python3 -c "
+import json
+with open('$CONFIG_FILE') as f:
+    data = json.load(f)
+for g in data:
+    if g['name'] == '$name':
+        print(json.dumps(g))
+        break
+")
+
+  if [[ -z "$gw_json" ]]; then
+    echo "Gateway '$name' not found." >&2
+    return 1
+  fi
+
+  local url
+  url=$(echo "$gw_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['url'])")
+
+  # Check if this gateway has password auth
+  local has_auth
+  has_auth=$(echo "$gw_json" | python3 -c "
+import json, sys
+g = json.load(sys.stdin)
+print('yes' if g.get('auth', {}).get('mode') == 'password' else 'no')
+")
+
+  if [[ "$has_auth" == "no" ]]; then
+    echo "$url"
+    return 0
+  fi
+
+  # Gated auth: login → get ticket → append to URL
+  local login_url ticket_url provider username password_env
+  eval "$(echo "$gw_json" | python3 -c "
+import json, sys
+g = json.load(sys.stdin)
+a = g['auth']
+print(f'login_url=\"{a[\"login_url\"]}\"')
+print(f'ticket_url=\"{a[\"ticket_url\"]}\"')
+print(f'provider=\"{a[\"provider\"]}\"')
+print(f'username=\"{a[\"username\"]}\"')
+print(f'password_env=\"{a[\"password_env\"]}\"')
+")"
+
+  # Resolve password from env var or ~/.hermes/.env
+  local password
+  password="${!password_env:-}"
+  if [[ -z "$password" && -f "$CONFIG_DIR/.env" ]]; then
+    password=$(grep "^${password_env}=" "$CONFIG_DIR/.env" 2>/dev/null | tail -1 | cut -d'=' -f2-)
+  fi
+  if [[ -z "$password" ]]; then
+    echo -e "${RED}Error: $password_env not set. Add it to ~/.hermes/.env${RESET}" >&2
+    return 1
+  fi
+
+  # Login
+  local cookie_file
+  cookie_file=$(mktemp /tmp/hermes-gw-cookies.XXXXXX)
+  trap "rm -f '$cookie_file'" RETURN
+
+  local login_resp
+  login_resp=$(curl -s -c "$cookie_file" -X POST "$login_url" \
+    -H 'Content-Type: application/json' \
+    -d "{\"provider\":\"$provider\",\"username\":\"$username\",\"password\":\"$password\"}" 2>&1)
+
+  if ! echo "$login_resp" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if d.get('ok') else 1)" 2>/dev/null; then
+    echo -e "${RED}Login failed for '$name': $login_resp${RESET}" >&2
+    return 1
+  fi
+
+  # Get WS ticket
+  local ticket_resp ticket
+  ticket_resp=$(curl -s -b "$cookie_file" -X POST "$ticket_url" 2>&1)
+  ticket=$(echo "$ticket_resp" | python3 -c "import json,sys; print(json.load(sys.stdin).get('ticket',''))" 2>/dev/null)
+
+  if [[ -z "$ticket" ]]; then
+    echo -e "${RED}Failed to get WS ticket for '$name': $ticket_resp${RESET}" >&2
+    return 1
+  fi
+
+  # Append ticket to URL
+  local separator="?"
+  if [[ "$url" == *"?"* ]]; then
+    separator="&"
+  fi
+  echo "${url}${separator}ticket=${ticket}"
+}
+
+run_gateway() {
+  local name="$1"
+  shift
+  ensure_config
+
+  local url
+  url=$(resolve_gateway_url "$name") || exit 1
+
+  exec env HERMES_TUI_GATEWAY_URL="$url" command hermes --tui "$@"
+}
+
+# --- Selector ---
+
+select_gateway() {
+  ensure_config
+  local gateways
+  gateways=$(list_gateways)
+
+  # No gateways configured — just launch hermes directly
+  if [[ -z "$gateways" ]]; then
+    exec command hermes
+    return
+  fi
+
+  # Always offer local first
+  echo "  1) Local"
+  local i=2
+  while IFS=$'\t' read -r name url; do
+    local host_port
+    host_port=$(echo "$url" | sed 's|ws://||;s|/.*||')
+    echo -e "  $i) $name ${GREY}(${host_port})${RESET}"
+    ((i++))
+  done <<< "$gateways"
+
+  echo ""
+  echo -n "Select gateway [1]: "; read -r choice
+  choice="${choice:-1}"
+
+  if [[ "$choice" == "1" ]]; then
+    exec command hermes
+    return
+  fi
+
+  local selected_name=""
+  local j=2
+  while IFS=$'\t' read -r name url; do
+    if [[ "$choice" == "$j" ]]; then
+      selected_name="$name"
+      break
+    fi
+    ((j++))
+  done <<< "$gateways"
+
+  if [[ -z "$selected_name" ]]; then
+    echo "Invalid choice" >&2
+    return 1
+  fi
+
+  local resolved_url
+  resolved_url=$(resolve_gateway_url "$selected_name") || return 1
+
+  exec env HERMES_TUI_GATEWAY_URL="$resolved_url" command hermes --tui
+}
+
+# --- Install / Uninstall ---
+
+detect_rc_file() {
+  local shell_name
+  shell_name=$(basename "$SHELL")
+  case "$shell_name" in
+    zsh)  echo "$HOME/.zshrc" ;;
+    bash) echo "$HOME/.bashrc" ;;
+    *)    echo "$HOME/.profile" ;;
+  esac
+}
+
+install_function() {
+  local rc_file
+  rc_file=$(detect_rc_file)
+  local func_file="$CONFIG_DIR/hermes-gateway.sh"
+
+  # Write the function to a standalone file
+  cat > "$func_file" << 'FUNCTION'
+# hermes-gateway-selector — shell wrapper
+hermes() {
+  if [[ $# -gt 0 ]]; then
+    command hermes "$@"
+    return $?
+  fi
+  if command -v hermes-gateway &>/dev/null; then
+    hermes-gateway
+  else
+    command hermes
+  fi
+}
+FUNCTION
+
+  # Remove old source line if present
+  if [[ -f "$rc_file" ]] && grep -q "$MARKER" "$rc_file"; then
+    sed -i.bak "/$MARKER/,/$MARKER_END/d" "$rc_file"
+    rm -f "${rc_file}.bak"
+  fi
+
+  # Add single source line to rc file
+  cat >> "$rc_file" << EOF
+
+# >>> hermes-gateway-selector >>>
+[[ -f "$func_file" ]] && source "$func_file"
+# <<< hermes-gateway-selector <<<
+EOF
+
+  echo "Installed function to $func_file"
+  echo "Added source line to $rc_file"
+  echo "Restart your shell or run: source $rc_file"
+}
+
+uninstall_function() {
+  local rc_file
+  rc_file=$(detect_rc_file)
+  local func_file="$CONFIG_DIR/hermes-gateway.sh"
+
+  # Remove source line from rc file
+  if [[ -f "$rc_file" ]] && grep -q "$MARKER" "$rc_file"; then
+    sed -i.bak "/$MARKER/,/$MARKER_END/d" "$rc_file"
+    rm -f "${rc_file}.bak"
+    echo "Removed source line from $rc_file"
+  else
+    echo "No hermes-gateway entry found in $rc_file"
+  fi
+
+  # Delete the function file
+  if [[ -f "$func_file" ]]; then
+    rm -f "$func_file"
+    echo "Deleted $func_file"
+  fi
+}
+
+# --- Main ---
+
+case "${1:-}" in
+  list)
+    list_gateways
+    ;;
+  add)
+    if [[ $# -lt 3 ]]; then
+      echo "Usage: hermes-gateway add <name> <websocket-url>" >&2
+      exit 1
+    fi
+    add_gateway "$2" "$3"
+    ;;
+  remove)
+    if [[ $# -lt 2 ]]; then
+      echo "Usage: hermes-gateway remove <name>" &>2
+      exit 1
+    fi
+    remove_gateway "$2"
+    ;;
+  run)
+    if [[ $# -lt 2 ]]; then
+      echo "Usage: hermes-gateway run <name> [-- hermes-args...]" >&2
+      exit 1
+    fi
+    run_gateway "$2" "${@:3}"
+    ;;
+  install)
+    install_function
+    ;;
+  uninstall)
+    uninstall_function
+    ;;
+  "")
+    select_gateway
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Usage: hermes-gateway [list|add|remove|run|install|uninstall]" >&2
+    exit 1
+    ;;
+esac
