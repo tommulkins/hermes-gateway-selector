@@ -155,17 +155,14 @@ print('yes' if g.get('auth', {}).get('mode') == 'password' else 'no')
   fi
 
   # Gated auth: login → get ticket → append to URL
+  # Fields are read via command substitution (no eval) — safe even if a
+  # config value contains shell metacharacters like $() or backticks.
   local login_url ticket_url provider username password_env
-  eval "$(echo "$gw_json" | python3 -c "
-import json, sys
-g = json.load(sys.stdin)
-a = g['auth']
-print(f'login_url=\"{a[\"login_url\"]}\"')
-print(f'ticket_url=\"{a[\"ticket_url\"]}\"')
-print(f'provider=\"{a[\"provider\"]}\"')
-print(f'username=\"{a[\"username\"]}\"')
-print(f'password_env=\"{a[\"password_env\"]}\"')
-")"
+  login_url=$(echo "$gw_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['login_url'])")
+  ticket_url=$(echo "$gw_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['ticket_url'])")
+  provider=$(echo "$gw_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['provider'])")
+  username=$(echo "$gw_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['username'])")
+  password_env=$(echo "$gw_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['password_env'])")
 
   # Resolve password from env var or ~/.hermes/.env
   local password

@@ -39,9 +39,9 @@ chmod +x ~/.local/bin/hermes-gateway
 # Set up the shell wrapper (adds a source line to .zshrc or .bashrc, auto-detected)
 hermes-gateway install
 
-# Add your remote gateways
-hermes-gateway add "Work Laptop" "ws://192.168.1.100:9119/api/ws?token=YOUR_TOKEN"
-hermes-gateway add "Home Server" "ws://10.0.0.5:9119/api/ws?token=YOUR_TOKEN"
+# Add your remote gateways (set GATEWAY_TOKEN first — see note below)
+GATEWAY_TOKEN='<your-api-token>' hermes-gateway add "Work Laptop" "ws://192.168.1.100:9119/api/ws?token=$GATEWAY_TOKEN"
+GATEWAY_TOKEN='<your-api-token>' hermes-gateway add "Home Server" "ws://10.0.0.5:9119/api/ws?token=$GATEWAY_TOKEN"
 
 # Restart your shell, then just type `hermes`
 source ~/.zshrc  # or ~/.bashrc
@@ -71,15 +71,15 @@ If you have Hermes Agent running on another machine (home server, work laptop, V
 The agent will configure the gateway and return a URL like:
 
 ```
-ws://192.168.1.100:9119/api/ws?token=your-api-token-here
+ws://192.168.1.100:9119/api/ws?token=<your-api-token>
 ```
 
 > **Not on your local network, or need encryption?** Use `wss://` instead of `ws://` for TLS-encrypted connections. See [Security](#security) for details on setting up TLS and tunnels.
 
-**On your local machine** — add it:
+**On your local machine** — add it (keep the token out of your shell history by setting it as an env var):
 
 ```bash
-hermes-gateway add "Home Server" "ws://192.168.1.100:9119/api/ws?token=your-api-token-here"
+GATEWAY_TOKEN='<your-api-token>' hermes-gateway add "Home Server" "ws://192.168.1.100:9119/api/ws?token=$GATEWAY_TOKEN"
 ```
 
 Now `hermes` will show the selector with both Local and the remote gateway.

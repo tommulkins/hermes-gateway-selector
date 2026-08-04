@@ -45,8 +45,8 @@ Restart your shell or `source` the rc file.
 ### 3. Add gateways
 
 ```bash
-# Add a remote agent
-hermes-gateway add "Agent Name" "ws://HOST:PORT/api/ws?token=YOUR_TOKEN"
+# Add a remote agent (set GATEWAY_TOKEN first — keeps the token out of shell history)
+GATEWAY_TOKEN='<your-api-token>' hermes-gateway add "Agent Name" "ws://HOST:PORT/api/ws?token=$GATEWAY_TOKEN"
 
 # List configured gateways
 hermes-gateway list
