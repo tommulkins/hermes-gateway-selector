@@ -52,11 +52,15 @@ hermes
 
 Already have Hermes running? Just ask your agent:
 
-> Install the hermes-gateway-selector skill from skills.sh
+```text
+Install the hermes-gateway-selector skill from skills.sh
+```
 
 Or from the repo directly:
 
-> Install the hermes-gateway-selector skill from https://github.com/tommulkins/hermes-gateway-selector
+```text
+Install the hermes-gateway-selector skill from https://github.com/tommulkins/hermes-gateway-selector
+```
 
 The agent will copy the script to your PATH, run `hermes-gateway install`, and walk you through adding your first gateway.
 
